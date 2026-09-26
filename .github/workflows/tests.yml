@@ -20,7 +20,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Install locked CPU dependencies
-        run: uv sync --locked --no-group cu124 --group cpu
+        run: uv sync --locked --no-group cu128 --group cpu
       - name: Verify Python environment and CPU wheels
         run: |
           uv run --no-sync python - <<'PY'

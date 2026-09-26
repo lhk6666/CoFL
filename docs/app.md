@@ -109,8 +109,8 @@ The CPU dependency group selects installed Torch packages; explicitly select
 CPU execution too when launching with a CPU-only environment:
 
 ```bash
-uv sync --locked --no-group cu124 --group cpu
-uv run --locked --no-group cu124 --group cpu cofl app --build --device cpu
+uv sync --locked --no-group cu128 --group cpu
+uv run --locked --no-group cu128 --group cpu cofl app --build --device cpu
 ```
 
 The Python application dependencies are also available as

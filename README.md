@@ -45,7 +45,7 @@ Their field decoders and coordinate conventions remain distinct.
 ## Installation
 
 The locked environment targets **Linux x86_64, Python 3.12.12 and uv 0.12.10**.
-It creates an independent `.venv` with PyTorch 2.5.1, Torchvision 0.20.1,
+It creates an independent `.venv` with PyTorch 2.7.1, Torchvision 0.22.1,
 Lightning 2.5.5 and the training, evaluation, host-side generation and test
 dependencies. Run these commands from the repository root after cloning:
 
@@ -61,18 +61,22 @@ supports versioned installations. uv manages its own Python installation;
 `.python-version` selects Python 3.12.12 independently of system Python or Conda.
 `uv.lock` fixes the dependency resolution. `--locked` checks that the lock
 matches the project without updating it. The default dependency groups are
-`dev` and `cu124`, using the official PyTorch CUDA 12.4 wheels. GPU training
-requires an NVIDIA GPU with a compatible driver.
+`dev` and `cu128`, using the official PyTorch CUDA 12.8 wheels. These support
+Blackwell GPUs, including RTX PRO 6000, and Ada GPUs such as RTX 4090.
+[PyTorch 2.7 added Blackwell support](https://pytorch.org/blog/pytorch-2-7/).
+GPU training requires a compatible NVIDIA driver; Linux driver 570 or newer
+is recommended. The installed packages include the CUDA runtime, so a separate
+CUDA toolkit installation is not needed for normal training and inference.
 
-For CPU use, select the `cpu` dependency group instead of `cu124` for both
+For CPU use, select the `cpu` dependency group instead of `cu128` for both
 synchronization and every run:
 
 ```bash
-uv sync --locked --no-group cu124 --group cpu
-uv run --locked --no-group cu124 --group cpu cofl --help
+uv sync --locked --no-group cu128 --group cpu
+uv run --locked --no-group cu128 --group cpu cofl --help
 ```
 
-`cpu` and `cu124` are mutually exclusive dependency groups. The commands below
+`cpu` and `cu128` are mutually exclusive dependency groups. The commands below
 use the default CUDA environment; use the CPU prefix above for CPU execution
 and select CPU in the task configuration. The full internal Python and browser
 test suites are not included in the public release. Dataset and checkpoint

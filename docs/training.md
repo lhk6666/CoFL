@@ -10,8 +10,8 @@ LightningCLI parses the YAML configuration and command-line overrides.
 
 Follow the [uv installation instructions](../README.md#installation), then run
 from the repository root. The Linux x86_64 environment pins Python 3.12.12,
-PyTorch 2.5.1, Torchvision 0.20.1, TorchData 0.10.0, Lightning 2.5.5,
-TorchMetrics 1.8.2 and Transformers 4.57.1. Its default `dev` and `cu124` dependency groups include
+PyTorch 2.7.1, Torchvision 0.22.1, TorchData 0.10.0, Lightning 2.5.5,
+TorchMetrics 1.8.2 and Transformers 4.57.1. Its default `dev` and `cu128` dependency groups include
 the complete training runtime.
 
 ```bash
@@ -46,8 +46,8 @@ For CPU execution, use the `cpu` dependency group for synchronization and
 commands, and override the recipe's accelerator:
 
 ```bash
-uv sync --locked --no-group cu124 --group cpu
-uv run --locked --no-group cu124 --group cpu cofl train \
+uv sync --locked --no-group cu128 --group cpu
+uv run --locked --no-group cu128 --group cpu cofl train \
   --config configs/cofl_formal.yaml --trainer.accelerator cpu
 ```
 
@@ -117,7 +117,7 @@ when changing the experiment seed.
 
 Data workers use `data.multiprocessing_context: forkserver` by default; `spawn`
 is also supported. These follow PyTorch's supported start methods for CUDA
-multiprocessing. See the [PyTorch multiprocessing guidance](https://github.com/pytorch/pytorch/blob/v2.5.1/docs/source/notes/multiprocessing.rst#cuda-in-multiprocessing).
+multiprocessing. See the [PyTorch multiprocessing guidance](https://github.com/pytorch/pytorch/blob/v2.7.1/docs/source/notes/multiprocessing.rst#cuda-in-multiprocessing).
 
 Use `trainer.max_epochs` or `trainer.max_steps` for the training horizon.
 These have Lightning's standard meaning; there is no separate execution cap.
