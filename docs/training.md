@@ -6,6 +6,26 @@ selection and logging. `CoFLModule` contains the policy and losses;
 `ModelConfig` and `OptimizerConfig` describe model and optimizer arguments.
 LightningCLI parses the YAML configuration and command-line overrides.
 
+On Blackwell `sm_120`, FP32 attention uses PyTorch's math SDPA backend throughout
+SigLIP, vision-language fusion, and field/action decoders.
+Real training batches reproduced both NaN gradients in decoder attention and
+enormous finite gradients in fusion with memory-efficient SDPA backward, despite
+finite inputs and loss. The latter can overflow the FP32 gradient norm and cause
+standard clipping to silently zero every gradient, leaving training stalled.
+An isolated fusion operation also reproduced incorrect forward values with
+dropout disabled, so the fallback applies during FP32 inference as well.
+The math fallback uses more memory and compute; backend changes can also change
+dropout masks and floating-point results. It preserves the checkpoint format,
+so training can resume from a healthy checkpoint. RTX 4090 and other dtypes,
+including BF16/FP16 autocast, retain their existing backend selection.
+
+With Lightning's standard precision plugin (including `32-true`), norm clipping
+rejects a nonfinite gradient norm before updating the optimizer and logs the
+pre-clipping norm as `train/grad_norm`. Specialized precision plugins retain
+their own clipping behavior. A finite loss alone does not guarantee healthy
+gradients. After a numerical failure, resume from a checkpoint before the
+deterioration, rather than continuing the damaged final checkpoint.
+
 ## Install and launch
 
 Follow the [uv installation instructions](../README.md#installation), then run
