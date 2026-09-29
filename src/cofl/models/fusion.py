@@ -5,6 +5,8 @@ from __future__ import annotations
 import torch
 from torch import nn
 
+from .blocks import safe_attention_backend
+
 
 def _text_key_padding_mask(
     text_tokens: torch.Tensor, text_attention_mask: torch.Tensor | None
@@ -61,9 +63,10 @@ class VisionLanguageFusion(nn.Module):
     ) -> torch.Tensor:
         """Fuse tokens with an optional [B,L] mask where True means valid text."""
         text_key_padding_mask = _text_key_padding_mask(text_tokens, text_attention_mask)
-        for layer in self.layers:
-            visual_tokens = layer(
-                visual_tokens, text_tokens, memory_key_padding_mask=text_key_padding_mask
-            )
+        with safe_attention_backend(visual_tokens):
+            for layer in self.layers:
+                visual_tokens = layer(
+                    visual_tokens, text_tokens, memory_key_padding_mask=text_key_padding_mask
+                )
         context = visual_tokens
         return context

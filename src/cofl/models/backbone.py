@@ -12,6 +12,8 @@ from typing import Any
 import torch
 from torch import nn
 
+from .blocks import safe_attention_backend
+
 
 def processor_from_files(files: dict[str, bytes]):
     """Load a CPU SigLIP processor from embedded files, without model weights.
@@ -336,6 +338,7 @@ class SigLIPBackbone(nn.Module):
         with (
             self._deterministic_eval_context(),
             torch.set_grad_enabled(torch.is_grad_enabled() and self.training),
+            safe_attention_backend(next(self.vision_encoder.parameters())),
         ):
             outputs = self.vision_encoder(pixel_values=pixel_values_t)
         return outputs.last_hidden_state
@@ -365,6 +368,7 @@ class SigLIPBackbone(nn.Module):
         with (
             self._deterministic_eval_context(),
             torch.set_grad_enabled(torch.is_grad_enabled() and self.training),
+            safe_attention_backend(next(self.text_encoder.parameters())),
         ):
             outputs = self.text_encoder(input_ids=input_ids_t, attention_mask=attention_mask_t)
         return torch.cat([outputs.pooler_output.unsqueeze(1), outputs.last_hidden_state], dim=1)

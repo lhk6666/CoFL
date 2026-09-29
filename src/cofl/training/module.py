@@ -6,6 +6,7 @@ from typing import Literal
 
 import lightning.pytorch as pl
 import torch
+from lightning.pytorch.plugins.precision import Precision
 from torch.nn import functional as F
 from transformers import get_scheduler
 
@@ -286,6 +287,37 @@ class CoFLModule(pl.LightningModule):
             "optimizer": optimizer,
             "lr_scheduler": {"scheduler": scheduler, "interval": "step"},
         }
+
+    def configure_gradient_clipping(
+        self, optimizer, gradient_clip_val=None, gradient_clip_algorithm=None
+    ):
+        if gradient_clip_val is None:
+            gradient_clip_val = self.trainer.gradient_clip_val or 0.0
+        if gradient_clip_algorithm is None:
+            gradient_clip_algorithm = self.trainer.gradient_clip_algorithm or "norm"
+        precision = self.trainer.precision_plugin
+        if (
+            gradient_clip_algorithm != "norm"
+            or gradient_clip_val <= 0
+            or type(precision).clip_grad_by_norm is not Precision.clip_grad_by_norm
+            or type(precision).clip_gradients is not Precision.clip_gradients
+        ):
+            return super().configure_gradient_clipping(
+                optimizer, gradient_clip_val, gradient_clip_algorithm
+            )
+        parameters = list(precision.main_params(optimizer))
+        try:
+            # Finite individual gradients can still overflow the norm. Reject
+            # that case before clipping could silently zero every gradient.
+            norm = torch.nn.utils.clip_grad_norm_(
+                parameters, gradient_clip_val, error_if_nonfinite=True
+            )
+        except RuntimeError as exc:
+            raise RuntimeError(
+                f"Gradient clipping failed at global step {self.global_step}; "
+                f"optimizer update aborted: {exc}"
+            ) from exc
+        self.log("train/grad_norm", norm, on_step=True, on_epoch=False)
 
     def on_save_checkpoint(self, checkpoint):
         data = self.trainer.datamodule

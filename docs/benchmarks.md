@@ -122,8 +122,8 @@ For CPU evaluation, select the CPU dependency group on both commands and set
 the evaluation device explicitly:
 
 ```bash
-uv sync --locked --no-group cu124 --group cpu
-uv run --locked --no-group cu124 --group cpu cofl evaluate \
+uv sync --locked --no-group cu128 --group cpu
+uv run --locked --no-group cu128 --group cpu cofl evaluate \
   --config configs/evaluation/cofl.yaml --device cpu \
   --dataset datasets/cofl --checkpoint checkpoints/cofl/best.ckpt \
   --output artifacts/evaluation/cofl-cpu

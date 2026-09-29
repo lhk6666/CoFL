@@ -6,12 +6,32 @@ selection and logging. `CoFLModule` contains the policy and losses;
 `ModelConfig` and `OptimizerConfig` describe model and optimizer arguments.
 LightningCLI parses the YAML configuration and command-line overrides.
 
+On Blackwell `sm_120`, FP32 attention uses PyTorch's math SDPA backend throughout
+SigLIP, vision-language fusion, and field/action decoders.
+Real training batches reproduced both NaN gradients in decoder attention and
+enormous finite gradients in fusion with memory-efficient SDPA backward, despite
+finite inputs and loss. The latter can overflow the FP32 gradient norm and cause
+standard clipping to silently zero every gradient, leaving training stalled.
+An isolated fusion operation also reproduced incorrect forward values with
+dropout disabled, so the fallback applies during FP32 inference as well.
+The math fallback uses more memory and compute; backend changes can also change
+dropout masks and floating-point results. It preserves the checkpoint format,
+so training can resume from a healthy checkpoint. RTX 4090 and other dtypes,
+including BF16/FP16 autocast, retain their existing backend selection.
+
+With Lightning's standard precision plugin (including `32-true`), norm clipping
+rejects a nonfinite gradient norm before updating the optimizer and logs the
+pre-clipping norm as `train/grad_norm`. Specialized precision plugins retain
+their own clipping behavior. A finite loss alone does not guarantee healthy
+gradients. After a numerical failure, resume from a checkpoint before the
+deterioration, rather than continuing the damaged final checkpoint.
+
 ## Install and launch
 
 Follow the [uv installation instructions](../README.md#installation), then run
 from the repository root. The Linux x86_64 environment pins Python 3.12.12,
-PyTorch 2.5.1, Torchvision 0.20.1, TorchData 0.10.0, Lightning 2.5.5,
-TorchMetrics 1.8.2 and Transformers 4.57.1. Its default `dev` and `cu124` dependency groups include
+PyTorch 2.7.1, Torchvision 0.22.1, TorchData 0.10.0, Lightning 2.5.5,
+TorchMetrics 1.8.2 and Transformers 4.57.1. Its default `dev` and `cu128` dependency groups include
 the complete training runtime.
 
 ```bash
@@ -46,8 +66,8 @@ For CPU execution, use the `cpu` dependency group for synchronization and
 commands, and override the recipe's accelerator:
 
 ```bash
-uv sync --locked --no-group cu124 --group cpu
-uv run --locked --no-group cu124 --group cpu cofl train \
+uv sync --locked --no-group cu128 --group cpu
+uv run --locked --no-group cu128 --group cpu cofl train \
   --config configs/cofl_formal.yaml --trainer.accelerator cpu
 ```
 
@@ -117,7 +137,7 @@ when changing the experiment seed.
 
 Data workers use `data.multiprocessing_context: forkserver` by default; `spawn`
 is also supported. These follow PyTorch's supported start methods for CUDA
-multiprocessing. See the [PyTorch multiprocessing guidance](https://github.com/pytorch/pytorch/blob/v2.5.1/docs/source/notes/multiprocessing.rst#cuda-in-multiprocessing).
+multiprocessing. See the [PyTorch multiprocessing guidance](https://github.com/pytorch/pytorch/blob/v2.7.1/docs/source/notes/multiprocessing.rst#cuda-in-multiprocessing).
 
 Use `trainer.max_epochs` or `trainer.max_steps` for the training horizon.
 These have Lightning's standard meaning; there is no separate execution cap.

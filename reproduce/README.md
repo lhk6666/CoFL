@@ -12,8 +12,8 @@ root, the CLI check can run on CPU without release datasets, checkpoints,
 W&B credentials or a pretrained-model download:
 
 ```bash
-uv sync --locked --no-group cu124 --group cpu
-uv run --locked --no-group cu124 --group cpu cofl --help
+uv sync --locked --no-group cu128 --group cpu
+uv run --locked --no-group cu128 --group cpu cofl --help
 ```
 
 The full internal Python and browser test suites are not included in the public

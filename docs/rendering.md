@@ -95,7 +95,7 @@ uv run --locked --extra rendering cofl data render \
 ```
 
 For Xvfb, prefix either command with `xvfb-run -a`. For the CPU dependency group,
-also pass `--no-group cu124 --group cpu` to each `uv sync`/`uv run` invocation.
+also pass `--no-group cu128 --group cpu` to each `uv sync`/`uv run` invocation.
 
 Omit `--scan-ids` to select every discoverable scene. Use a new output directory
 when changing the selection or seed; a preview directory cannot be resumed

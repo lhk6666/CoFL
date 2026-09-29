@@ -3,10 +3,28 @@
 from __future__ import annotations
 
 import math
+from contextlib import nullcontext
 
 import torch
 from torch import nn
 from torch.nn import functional as F
+from torch.nn.attention import SDPBackend, sdpa_kernel
+
+
+def safe_attention_backend(reference: torch.Tensor):
+    """Use stable FP32 SDPA on Blackwell across all attention callers."""
+    if reference.is_cuda:
+        dtype = (
+            torch.get_autocast_dtype("cuda")
+            if torch.is_autocast_enabled("cuda") else reference.dtype
+        )
+        # On sm120, real decoder/fusion batches produced NaN or enormous finite
+        # gradients with memory-efficient SDPA. A fixed, dropout-free fusion
+        # input also had incorrect forward values. MATH fixes both paths.
+        # FP32 parameters under BF16/FP16 autocast do not need this fallback.
+        if dtype == torch.float32 and torch.cuda.get_device_capability(reference.device) == (12, 0):
+            return sdpa_kernel(SDPBackend.MATH)
+    return nullcontext()
 
 
 def prepare_attention_context(attention: nn.MultiheadAttention, context: torch.Tensor):
@@ -50,12 +68,13 @@ def attention_from_context(attention, query, query_context, attn_mask=None, key_
             )
         padding = padding[:, None, None, :]
         mask = padding if mask is None else mask + padding
-    output = F.scaled_dot_product_attention(
-        projected,
-        *query_context,
-        attn_mask=mask,
-        dropout_p=attention.dropout if attention.training else 0.0,
-    )
+    with safe_attention_backend(projected):
+        output = F.scaled_dot_product_attention(
+            projected,
+            *query_context,
+            attn_mask=mask,
+            dropout_p=attention.dropout if attention.training else 0.0,
+        )
     output = output.transpose(1, 2).reshape(*query.shape[:2], width)
     return F.linear(output, attention.out_proj.weight, attention.out_proj.bias)
 
@@ -125,7 +144,8 @@ class PostNormDecoderBlock(nn.Module):
 
     def decode(self, q, query_context, attn_mask=None, key_padding_mask=None):
         if self.self_attn is not None:
-            (attn_output, _) = self.self_attn(q, q, q, need_weights=False)
+            with safe_attention_backend(q):
+                (attn_output, _) = self.self_attn(q, q, q, need_weights=False)
             q = q + self.dropoutq(attn_output)
             q = self.normq(q)
         attn_output = attention_from_context(
@@ -188,9 +208,10 @@ class PreNormDecoderBlock(nn.Module):
     def decode(self, q, query_context, attn_mask=None, key_padding_mask=None):
         if self.self_attn is not None:
             normalized = self.normq(q)
-            (attn_output, _) = self.self_attn(
-                normalized, normalized, normalized, need_weights=False
-            )
+            with safe_attention_backend(normalized):
+                (attn_output, _) = self.self_attn(
+                    normalized, normalized, normalized, need_weights=False
+                )
             q = q + self.dropoutq(attn_output)
         attn_output = attention_from_context(
             self.cross_attn, self.norm1(q), query_context, attn_mask, key_padding_mask

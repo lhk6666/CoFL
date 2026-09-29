@@ -41,10 +41,10 @@ generation = [
   "PyYAML>=6,<7",
 ]
 rendering = ["cofl-navigation[generation]", "open3d==0.19.0"]
-models = ["torch==2.5.1"]
+models = ["torch==2.7.1"]
 vision = [
   "cofl-navigation[models]",
-  "torchvision==0.20.1",
+  "torchvision==0.22.1",
   "transformers[sentencepiece]==4.57.1",
   "Pillow>=10,<12",
 ]
@@ -73,25 +73,25 @@ dev = [
   "setuptools>=68",
   "wheel",
 ]
-cpu = ["torch==2.5.1", "torchvision==0.20.1"]
-cu124 = ["torch==2.5.1", "torchvision==0.20.1"]
+cpu = ["torch==2.7.1", "torchvision==0.22.1"]
+cu128 = ["torch==2.7.1", "torchvision==0.22.1"]
 
 [tool.uv]
 required-version = ">=0.12.10"
 python-preference = "only-managed"
 build-constraint-dependencies = ["setuptools==80.9.0", "wheel==0.48.0"]
-default-groups = ["dev", "cu124"]
+default-groups = ["dev", "cu128"]
 environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
-conflicts = [[{ group = "cpu" }, { group = "cu124" }]]
+conflicts = [[{ group = "cpu" }, { group = "cu128" }]]
 
 [tool.uv.sources]
 torch = [
   { index = "pytorch-cpu", group = "cpu" },
-  { index = "pytorch-cu124", group = "cu124" },
+  { index = "pytorch-cu128", group = "cu128" },
 ]
 torchvision = [
   { index = "pytorch-cpu", group = "cpu" },
-  { index = "pytorch-cu124", group = "cu124" },
+  { index = "pytorch-cu128", group = "cu128" },
 ]
 
 [[tool.uv.index]]
@@ -100,8 +100,8 @@ url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [[tool.uv.index]]
-name = "pytorch-cu124"
-url = "https://download.pytorch.org/whl/cu124"
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [project.scripts]
